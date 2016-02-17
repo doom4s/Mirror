@@ -1,5 +1,6 @@
 package com.maric.vlajko.mirror;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
@@ -7,13 +8,18 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.ShareActionProvider;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.EditText;
@@ -34,11 +40,11 @@ public class Main2Activity extends AppCompatActivity implements View.OnClickList
     private TextView ourText,cancelAction, setaction;
     private EditText userText;
     private ImageView myImageView;
-    private Intent intent;
+    private ShareActionProvider mShareActionProvider;
     private LinearLayout ourLinearLayout;
     private RelativeLayout myLayout;
     private Dialog dialog;
-    private Activity activity;
+    private String imagePath;
     private FloatingActionButton floatingActionButton,fab1,fab2,fab3,fab4,fab5;
     private File file,f;
     private static int RESULT_LOAD_IMAGE = 1;
@@ -72,30 +78,36 @@ public class Main2Activity extends AppCompatActivity implements View.OnClickList
         fab5.setOnClickListener(this);
     }
     private void saveImage(){
-        myLayout =  (RelativeLayout)findViewById(R.id.saveImageLayout);
-        myLayout.setDrawingCacheEnabled(true);
-        Bitmap bitmap = myLayout.getDrawingCache();
-        if (android.os.Environment.getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED))
-        {
-            file =new File(android.os.Environment.getExternalStorageDirectory(),"/Pictures");
-            if(!file.exists())
-            {
-                file.mkdirs();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                myLayout =  (RelativeLayout)findViewById(R.id.saveImageLayout);
+                myLayout.setDrawingCacheEnabled(true);
+                Bitmap bitmap = myLayout.getDrawingCache();
+                if (android.os.Environment.getExternalStorageState().equals(android.os.Environment.MEDIA_MOUNTED))
+                {
+                    file =new File(android.os.Environment.getExternalStorageDirectory(),"/Pictures");
+                    if(!file.exists())
+                    {
+                        file.mkdirs();
+                    }
+                    Random random = new Random();
+                    int ran = random.nextInt(10);
+                    f = new File(file.getAbsolutePath()+file.separator+ "image"+ran+".png");
+                    imagePath = f.toString();
+                }
+                FileOutputStream ostream = null;
+                try {
+                    ostream = new FileOutputStream(f);
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 10, ostream);
+                    ostream.close();
+                    mediaScanner = new SingleMediaScanner(getApplicationContext(),f);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-            Random random = new Random();
-            int ran = random.nextInt(10);
-            f = new File(file.getAbsolutePath()+file.separator+ "image"+ran+".png");
-            Toast.makeText(getApplicationContext(),"Image saved.",Toast.LENGTH_LONG).show();
-        }
-        FileOutputStream ostream = null;
-        try {
-            ostream = new FileOutputStream(f);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 10, ostream);
-            ostream.close();
-            mediaScanner = new SingleMediaScanner(getApplicationContext(),f);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        }).start();
+        Toast.makeText(getApplicationContext(),"Image saved.",Toast.LENGTH_LONG).show();
     }
     @Nullable
     private void createDialog(){
@@ -109,7 +121,6 @@ public class Main2Activity extends AppCompatActivity implements View.OnClickList
         cancelAction.setOnClickListener(this);
         setaction.setOnClickListener(this);
     }
-
 
     @Override
     public void onClick(View v) {
@@ -242,7 +253,6 @@ public class Main2Activity extends AppCompatActivity implements View.OnClickList
             inSampleSize = Math.round((float)width / (float)reqWidth);
         }
 
-
         options.inSampleSize = inSampleSize;
 
         // Decode bitmap with inSampleSize set
@@ -250,4 +260,5 @@ public class Main2Activity extends AppCompatActivity implements View.OnClickList
 
         return BitmapFactory.decodeFile(path, options);
     }
+
 }
